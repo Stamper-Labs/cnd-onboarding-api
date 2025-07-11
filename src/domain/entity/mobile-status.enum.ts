@@ -1,4 +1,4 @@
 export enum MobileStatus {
-  ALREADY_TAKEN = 400,
-  AVAILABLE = 200,
+  ALREADY_TAKEN = 'ALREADY TAKEN',
+  AVAILABLE = 'AVAILABLE',
 }

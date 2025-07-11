@@ -4,6 +4,8 @@ import { OnboardingRepository } from '../domain/repository/onboarding.repository
 import { OnboardingStatus } from '../domain/entity/onboarding-status.enum';
 import { Onboarding } from '../domain/entity/onboarding';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
+import { UpsertCriteria } from 'src/domain/repository/criteria/upsert.criteria';
 
 @Injectable()
 export class ValidateEmailUsecase {
@@ -17,44 +19,80 @@ export class ValidateEmailUsecase {
     email: string,
     onboardingId: string,
   ): Promise<[Onboarding, EmailStatus]> {
-    this.logger.info({ onboardingId, email }, 'Start email validation');
+    this.logger.info({ onboardingId }, `Start email validation: ${email}`);
     return this.onboardingRepository
-      .findByIdAndEmail(onboardingId, email)
+      .findOnboardingByIndex(this.buildEmailIndexCriteria(onboardingId, email))
       .then((onboardingFound) => {
         if (!onboardingFound) {
           this.logger.info(
-            { onboardingId, email },
-            'Onboarding not found for email. Proceeding to create a new onboarding.',
+            { onboardingId },
+            `Proceeding to create a new onboarding with email: ${email}`,
           );
-          const obToCreate = Onboarding.builder()
-            .setOnboardingId(onboardingId)
-            .setStatus(OnboardingStatus.INITIATED)
-            .setEmail(email)
-            .build();
+          const upsertCriteria = this.buildUpsertOnboardingCriteria(
+            onboardingId,
+            email,
+          );
           return this.onboardingRepository
-            .createOnboarding(obToCreate)
+            .upsert(upsertCriteria)
             .then((onboardingCreated) => {
-              this.logger.info('Onboarding created successfully.', {
-                onboardingId,
-                email,
-              });
+              this.logger.info(
+                { onboardingId },
+                `Email validation completed successfully: ${email} is available to use`,
+              );
               return [onboardingCreated, EmailStatus.AVAILABLE];
             });
         } else {
           if (OnboardingStatus.INITIATED === onboardingFound.getStatus()) {
             this.logger.info(
-              { onboardingId, email },
-              'Onboarding found with status INITIATED. Proceeding with onboarding.',
+              { onboardingId },
+              `Email validation completed successfully: The onboarding is already INITIATED for ${email}`,
             );
             return [onboardingFound, EmailStatus.AVAILABLE];
           } else {
             this.logger.warn(
-              { onboardingId, email, status: onboardingFound.getStatus() },
-              'Onboarding found with status different than INITIATED. Email already taken.',
+              { onboardingId },
+              `Cannot proceed: email ${email} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (status: ${onboardingFound.getStatus()}).`,
             );
             return [onboardingFound, EmailStatus.ALREADY_TAKEN];
           }
         }
       });
+  }
+
+  private buildUpsertOnboardingCriteria(
+    onboardingId: string,
+    email: string,
+  ): UpsertCriteria<Onboarding> {
+    this.logger.info(
+      { onboardingId },
+      'Building upsert criteria for new onboarding entity. ',
+    );
+    const obToCreate = Onboarding.builder()
+      .setOnboardingId(onboardingId)
+      .setStatus(OnboardingStatus.INITIATED)
+      .setEmail(email)
+      .build();
+    const upsertCriteria: UpsertCriteria<Onboarding> = {
+      entity: obToCreate,
+    };
+    return upsertCriteria;
+  }
+
+  private buildEmailIndexCriteria(
+    onboardingId: string,
+    email: string,
+  ): IndexCriteria {
+    this.logger.info(
+      { onboardingId },
+      'Building query criteria for email-index lookup. ',
+    );
+    const queryByIndexCriteria: IndexCriteria = {
+      indexExpression: 'email = :email',
+      indexName: 'email-index',
+      values: {
+        ':email': email,
+      },
+    };
+    return queryByIndexCriteria;
   }
 }

@@ -1,13 +1,4 @@
 services:
-  mongo:
-    image: mongo:6.0
-    container_name: mongodb
-    ports:
-      - '27017:27017'
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
-      MONGO_INITDB_DATABASE: onboarding-api-db
   dynamodb-local:
     image: amazon/dynamodb-local
     container_name: dynamodb-local

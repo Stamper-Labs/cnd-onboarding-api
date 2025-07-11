@@ -4,11 +4,14 @@ import { OnboardingRepository } from '../domain/repository/onboarding.repository
 import { OnboardingStatus } from 'src/domain/entity/onboarding-status.enum';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
+import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
 
 @Injectable()
 export class SendOtpUsecase {
+  private readonly TABLE_NAME: string = 'cnd-onboarding-api-tb';
+
   constructor(
-    @InjectPinoLogger(OnboardingRepository.name)
+    @InjectPinoLogger(SendOtpUsecase.name)
     private readonly logger: PinoLogger,
     private readonly onboardingRepository: OnboardingRepository,
   ) {}
@@ -18,12 +21,15 @@ export class SendOtpUsecase {
       { onboardingId, email },
       'Start to send the otp to email.',
     );
+
+    const queryExpression = this.buildQueryExpression(
+      onboardingId,
+      email,
+      OnboardingStatus.INITIATED,
+    );
+
     const onboardingFound =
-      await this.onboardingRepository.findByIdAndEmailAndStatus(
-        onboardingId,
-        email,
-        OnboardingStatus.INITIATED,
-      );
+      await this.onboardingRepository.findByPk(queryExpression);
     if (!onboardingFound) {
       this.logger.error(
         { onboardingId, email },
@@ -41,5 +47,22 @@ export class SendOtpUsecase {
       this.logger.info({ onboardingId, email }, 'OTP sent to email');
       return otp; // Return the OTP for further processing if needed
     }
+  }
+
+  private buildQueryExpression(
+    onboardingId: string,
+    email: string,
+    status: OnboardingStatus,
+  ): PrimaryKeyCriteria {
+    const queryByPkCriteria: PrimaryKeyCriteria = {
+      primaryKeyExpression: 'onboardingId = :onboardingId',
+      filterExpression: 'status = :status AND email = :email',
+      values: {
+        ':onboardingId': onboardingId,
+        ':email': email,
+        ':status': status,
+      },
+    };
+    return queryByPkCriteria;
   }
 }

@@ -4,6 +4,8 @@ import { Injectable } from '@nestjs/common';
 import { authenticator } from 'otplib';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
+import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
+import { PatchCriteria } from 'src/domain/repository/criteria/patch.criteria';
 
 @Injectable()
 export class ConfirmOtpUsecase {
@@ -22,12 +24,15 @@ export class ConfirmOtpUsecase {
       { onboardingId, email },
       'Start to confirm the OTP for email',
     );
+
+    const queryExpression = this.buildQueryExpression(
+      onboardingId,
+      email,
+      OnboardingStatus.INITIATED,
+    );
+
     const onboardingFound =
-      await this.onboardingRepository.findByIdAndEmailAndStatus(
-        onboardingId,
-        email,
-        OnboardingStatus.INITIATED,
-      );
+      await this.onboardingRepository.findByPk(queryExpression);
     if (!onboardingFound) {
       this.logger.error(
         { onboardingId, email },
@@ -43,26 +48,58 @@ export class ConfirmOtpUsecase {
           'Using OTP fallback for email.',
         );
         isValidOtp = true; // Fallback for testing purposes
-        const onboardingUpd = await this.onboardingRepository.patch(
-          onboardingId,
-          OnboardingStatus.EMAIL_CONFIRMED,
-        );
+
+        const patchCriteria: PatchCriteria = {
+          partitionKey: ['onboardingId', onboardingId],
+          patchExpression: 'SET status = :status',
+          values: {
+            ':onboardingId': onboardingId,
+            ':status': OnboardingStatus.EMAIL_CONFIRMED,
+          },
+        };
+        const onboardingUpd =
+          await this.onboardingRepository.patch(patchCriteria);
         this.logger.info(
           { onboardingId: onboardingUpd.getOnboardingId(), email },
           'Email sucessfully confirmed',
         );
       } else {
         isValidOtp = authenticator.check(otp, onboardingId);
-        const onboardingUpd = await this.onboardingRepository.patch(
-          onboardingId,
-          OnboardingStatus.EMAIL_CONFIRMED,
-        );
-        this.logger.info(
-          { onboardingId: onboardingUpd.getOnboardingId(), email },
-          'Email sucessfully confirmed.',
-        );
+        if (isValidOtp) {
+          const patchCriteria: PatchCriteria = {
+            partitionKey: ['onboardingId', onboardingId],
+            patchExpression: 'SET status = :status',
+            values: {
+              ':onboardingId': onboardingId,
+              ':status': OnboardingStatus.EMAIL_CONFIRMED,
+            },
+          };
+          const onboardingUpd =
+            await this.onboardingRepository.patch(patchCriteria);
+          this.logger.info(
+            { onboardingId: onboardingUpd.getOnboardingId(), email },
+            'Email sucessfully confirmed.',
+          );
+        }
       }
       return isValidOtp;
     }
+  }
+
+  private buildQueryExpression(
+    onboardingId: string,
+    email: string,
+    status: OnboardingStatus,
+  ): PrimaryKeyCriteria {
+    const queryByPkCriteria: PrimaryKeyCriteria = {
+      primaryKeyExpression: 'onboardingId = :onboardingId',
+      filterExpression: 'status = :status AND email = :email',
+      values: {
+        ':onboardingId': onboardingId,
+        ':email': email,
+        ':status': status,
+      },
+    };
+    return queryByPkCriteria;
   }
 }
