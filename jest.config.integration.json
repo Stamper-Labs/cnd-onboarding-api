@@ -9,5 +9,6 @@
   "roots": ["<rootDir>/test/integration"],
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/src/$1"
-  }
+  },
+  "globalSetup": "<rootDir>/test/integration/jest.setup.ts"
 }

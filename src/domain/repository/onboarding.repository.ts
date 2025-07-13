@@ -56,7 +56,13 @@ export class OnboardingRepository {
       })
       .catch((error: Error) => {
         this.logger.error(
-          { error },
+          {
+            err: {
+              type: error.name,
+              message: error.message,
+              stack: error.stack,
+            },
+          },
           `Failed to find onboarding by index: ${error.message}`,
         );
         throw new InternalServerErrorException(

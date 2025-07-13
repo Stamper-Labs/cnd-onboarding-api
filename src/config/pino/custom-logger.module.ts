@@ -9,10 +9,14 @@ import { Request } from 'express';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const environment = configService.get<string>('NODE_ENV') || 'local';
+        const logLevel: string =
+          configService.get<string>('LOG_LEVEL') || 'info';
         if ('production' === environment) {
-          return CustomLoggerModule.getProductionLogingConfig();
+          return CustomLoggerModule.getProductionLoggingConfig(logLevel);
+        } else if ('integration' === environment) {
+          return CustomLoggerModule.getIntegrationLoggingConfig(logLevel);
         } else {
-          return CustomLoggerModule.getLocalLogingConfig();
+          return CustomLoggerModule.getLocalLoggingConfig(logLevel);
         }
       },
     }),
@@ -20,10 +24,10 @@ import { Request } from 'express';
   exports: [LoggerModule],
 })
 export class CustomLoggerModule {
-  private static getLocalLogingConfig() {
+  private static getLocalLoggingConfig(logLevel: string) {
     return {
       pinoHttp: {
-        level: 'debug',
+        level: logLevel,
         transport: {
           targets: [
             {
@@ -32,16 +36,19 @@ export class CustomLoggerModule {
                 colorize: true,
                 translateTime: 'SYS:standard',
                 singleLine: true,
+                errorLikeObjectKeys: ['err'],
               },
-              level: 'debug',
+              level: logLevel,
             },
             {
-              target: 'pino/file',
+              target: 'pino-roll',
               options: {
-                destination: './logs/local.log',
+                file: './logs/local.log',
+                size: '10m',
                 mkdir: true,
+                limit: { count: 7 },
               },
-              level: 'debug',
+              level: logLevel,
             },
           ],
         },
@@ -49,16 +56,45 @@ export class CustomLoggerModule {
     };
   }
 
-  private static getProductionLogingConfig() {
+  private static getIntegrationLoggingConfig(logLevel: string) {
     return {
       pinoHttp: {
-        level: 'info',
+        level: logLevel,
         transport: {
-          target: 'pino/file',
-          options: {
-            destination: './logs/production.log',
-            mkdir: true,
-          },
+          targets: [
+            {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'SYS:standard',
+                singleLine: true,
+                errorLikeObjectKeys: ['err'],
+              },
+              level: logLevel,
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  private static getProductionLoggingConfig(logLevel: string) {
+    return {
+      pinoHttp: {
+        level: logLevel,
+        transport: {
+          targets: [
+            {
+              target: 'pino-roll',
+              options: {
+                file: './logs/production.log',
+                size: '10m',
+                mkdir: true,
+                limit: { count: 30 },
+              },
+              level: logLevel,
+            },
+          ],
         },
       },
     };
