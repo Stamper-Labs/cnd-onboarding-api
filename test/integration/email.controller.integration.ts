@@ -1,7 +1,11 @@
 import * as request from 'supertest';
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { INestApplication } from '@nestjs/common';
-import { CreateTableCommand, CreateTableCommandInput, DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+  CreateTableCommand,
+  CreateTableCommandInput,
+  DynamoDBClient,
+} from '@aws-sdk/client-dynamodb';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 
@@ -13,7 +17,7 @@ describe('EmailController (integration test)', () => {
     container = await new GenericContainer('amazon/dynamodb-local')
       .withExposedPorts(8000)
       .start();
-    
+
     const endpoint = `http://${container.getHost()}:${container.getMappedPort(8000)}`;
     process.env.DYNAMO_ENDPOINT = endpoint;
 
@@ -31,7 +35,8 @@ describe('EmailController (integration test)', () => {
       },
     });
 
-    const dynamoTableName = process.env.DYNAMO_TABLE_NAME || 'cnd-onboarding-api-tb-int-test';
+    const dynamoTableName =
+      process.env.DYNAMO_TABLE_NAME || 'cnd-onboarding-api-tb-int-test';
 
     const tableParams: CreateTableCommandInput = {
       TableName: dynamoTableName,
@@ -65,7 +70,7 @@ describe('EmailController (integration test)', () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
         imports: [AppModule],
       }).compile();
-  
+
       app = moduleFixture.createNestApplication();
       await app.init();
     } catch (err) {
