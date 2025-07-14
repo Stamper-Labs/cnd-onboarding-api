@@ -13,7 +13,7 @@ describe('EmailController (integration test)', () => {
   });
 
   it('should return 201 when the email is valid', () => {
-    return request(base.getHttpServer())
+    return request(base.getApp().getHttpServer())
       .post('/v1/email/validate')
       .send({ email: 'test@mailinator.com' })
       .expect(201);

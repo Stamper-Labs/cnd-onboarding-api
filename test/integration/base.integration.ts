@@ -48,8 +48,8 @@ export class BaseIntegrationTest {
     if (this.container) await this.container.stop();
   }
 
-  getHttpServer(): ReturnType<INestApplication['getHttpServer']> {
-    return this.app.getHttpServer();
+  getApp(): INestApplication {
+    return this.app;
   }
 
   private setupDynamoClient(): DynamoDBClient {
