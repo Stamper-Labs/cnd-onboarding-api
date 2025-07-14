@@ -3,13 +3,14 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
+import { DataInitializerModule } from './data-initializer.module';
 
 describe('EmailController (integration test)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule, DataInitializerModule.forRoot()],
     }).compile();
 
     app = moduleFixture.createNestApplication();

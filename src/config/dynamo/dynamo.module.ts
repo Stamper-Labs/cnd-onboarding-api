@@ -9,6 +9,7 @@ export class DynamoModule {
   static forRoot(): DynamicModule {
     const dynamoProvider: Provider = {
       provide: 'DYNAMO_CLIENT',
+      inject: [Logger, ConfigService],
       useFactory: (logger: Logger, configService: ConfigService) => {
         const dynamoRegion = configService.get<string>('DYNAMO_REGION');
         const dynamoEndpoint = configService.get<string>('DYNAMO_ENDPOINT');
@@ -49,9 +50,7 @@ export class DynamoModule {
         const ddbClient = new DynamoDBClient(dynamoClientConfig);
         return DynamoDBDocumentClient.from(ddbClient);
       },
-      inject: [Logger, ConfigService],
     };
-
     return {
       module: DynamoModule,
       providers: [dynamoProvider],
