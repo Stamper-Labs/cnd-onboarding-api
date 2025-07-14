@@ -1,5 +1,5 @@
 import { Body, ConflictException, Controller, Post } from '@nestjs/common';
-import { ValidateEmailDto } from './dto/validate-email.dto';
+
 import { ValidateEmailUsecase } from '../../usecase/validate-email.usecase';
 import { EmailValidationDto } from './dto/email-validation.dto';
 import { EmailStatus } from '../../domain/entity/email-status.enum';
@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ApiCreatedResponse } from '@nestjs/swagger';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
+import { ValidateEmailDto } from './dto/validate-email.dto';
 
 @Controller('/v1/email')
 export class EmailController {
@@ -34,7 +35,7 @@ export class EmailController {
         if (EmailStatus.ALREADY_TAKEN === emailStatus) {
           throw new ConflictException('email is already taken');
         } else {
-          return new EmailValidationDto(onboardingId, validatedEmail);
+          return EmailValidationDto.from(onboardingId, validatedEmail);
         }
       });
   }

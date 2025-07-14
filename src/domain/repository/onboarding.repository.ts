@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Onboarding } from '../entity/onboarding';
-import { OnboardingStatus } from '../entity/onboarding-status.enum';
+import { OnboardingCheckpoint } from '../entity/onboarding-checkpoint.enum';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
 import {
@@ -60,9 +60,9 @@ export class OnboardingRepository {
           );
           return Onboarding.builder()
             .setOnboardingId(data.Items[0].onboardingId)
-            .setStatus(
-              OnboardingStatus[
-                data.Items[0].status as keyof typeof OnboardingStatus
+            .setCheckpoint(
+              OnboardingCheckpoint[
+                data.Items[0].checkpoint as keyof typeof OnboardingCheckpoint
               ],
             )
             .setEmail(data.Items[0].email)
@@ -102,9 +102,9 @@ export class OnboardingRepository {
           this.logger.debug('Onboarding found by query.');
           return Onboarding.builder()
             .setOnboardingId(data.Items[0].onboardingId)
-            .setStatus(
-              OnboardingStatus[
-                data.Items[0].status as keyof typeof OnboardingStatus
+            .setCheckpoint(
+              OnboardingCheckpoint[
+                data.Items[0].checkpoint as keyof typeof OnboardingCheckpoint
               ],
             )
             .setEmail(data.Items[0].email)
@@ -114,13 +114,19 @@ export class OnboardingRepository {
           return undefined;
         }
       })
-      .catch((error) => {
+      .catch((error: Error) => {
         this.logger.error(
-          'Unexpected error while fetching onboarding by email',
-          error,
+          {
+            err: {
+              type: error.name,
+              message: error.message,
+              stack: error.stack,
+            },
+          },
+          `Failed to find onboarding by primary key: ${error.message}`,
         );
         throw new InternalServerErrorException(
-          'Failed to fetch onboarding by email.',
+          'Unexpected error while finding onboarding by primary key. Try again later.',
         );
       });
   }
@@ -143,9 +149,9 @@ export class OnboardingRepository {
         );
         return Onboarding.builder()
           .setOnboardingId(onboardingEntity.getOnboardingId())
-          .setStatus(
-            OnboardingStatus[
-              onboardingEntity.getStatus() as keyof typeof OnboardingStatus
+          .setCheckpoint(
+            OnboardingCheckpoint[
+              onboardingEntity.getCheckpoint() as keyof typeof OnboardingCheckpoint
             ],
           )
           .setEmail(onboardingEntity.getEmail())
@@ -171,9 +177,9 @@ export class OnboardingRepository {
           return Onboarding.builder()
             .setOnboardingId(item.Attributes.onboardingId)
             .setEmail(item.Attributes.email)
-            .setStatus(
-              OnboardingStatus[
-                item.Attributes.status as keyof typeof OnboardingStatus
+            .setCheckpoint(
+              OnboardingCheckpoint[
+                item.Attributes.checkpoint as keyof typeof OnboardingCheckpoint
               ],
             )
             .build();
@@ -240,7 +246,7 @@ export class OnboardingRepository {
       TableName: this.TABLE_NAME,
       Item: {
         onboardingId: onboarding.getOnboardingId(),
-        status: onboarding.getStatus(),
+        checkpoint: onboarding.getCheckpoint(),
         email: onboarding.getEmail(),
       },
     });

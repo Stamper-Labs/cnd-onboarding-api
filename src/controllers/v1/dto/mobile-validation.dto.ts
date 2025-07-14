@@ -8,9 +8,11 @@ export class MobileValidationDto {
   @ApiProperty()
   mobile: string;
 
-  constructor(onboardingId: string, email: string, mobile: string) {
-    this.onboardingId = onboardingId;
-    this.email = email;
-    this.mobile = mobile;
+  static from(
+    onboardingId: string,
+    email: string,
+    mobile: string,
+  ): MobileValidationDto {
+    return { onboardingId, email, mobile } as MobileValidationDto;
   }
 }

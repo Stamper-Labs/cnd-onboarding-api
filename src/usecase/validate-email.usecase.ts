@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EmailStatus } from '../domain/entity/email-status.enum';
 import { OnboardingRepository } from '../domain/repository/onboarding.repository';
-import { OnboardingStatus } from '../domain/entity/onboarding-status.enum';
+import { OnboardingCheckpoint } from '../domain/entity/onboarding-checkpoint.enum';
 import { Onboarding } from '../domain/entity/onboarding';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
@@ -42,7 +42,9 @@ export class ValidateEmailUsecase {
               return [onboardingCreated, EmailStatus.AVAILABLE];
             });
         } else {
-          if (OnboardingStatus.INITIATED === onboardingFound.getStatus()) {
+          if (
+            OnboardingCheckpoint.INITIATED === onboardingFound.getCheckpoint()
+          ) {
             this.logger.info(
               { onboardingId },
               `Email validation completed successfully: The onboarding is already INITIATED for ${email}`,
@@ -51,7 +53,7 @@ export class ValidateEmailUsecase {
           } else {
             this.logger.warn(
               { onboardingId },
-              `Cannot proceed: email ${email} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (status: ${onboardingFound.getStatus()}).`,
+              `Cannot proceed: email ${email} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (checkpoint: ${onboardingFound.getCheckpoint()}).`,
             );
             return [onboardingFound, EmailStatus.ALREADY_TAKEN];
           }
@@ -69,7 +71,7 @@ export class ValidateEmailUsecase {
     );
     const obToCreate = Onboarding.builder()
       .setOnboardingId(onboardingId)
-      .setStatus(OnboardingStatus.INITIATED)
+      .setCheckpoint(OnboardingCheckpoint.INITIATED)
       .setEmail(email)
       .build();
     const upsertCriteria: UpsertCriteria<Onboarding> = {

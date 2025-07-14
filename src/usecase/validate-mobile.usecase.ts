@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MobileStatus } from 'src/domain/entity/mobile-status.enum';
 import { Onboarding } from 'src/domain/entity/onboarding';
 import { OnboardingRepository } from 'src/domain/repository/onboarding.repository';
-import { OnboardingStatus } from 'src/domain/entity/onboarding-status.enum';
+import { OnboardingCheckpoint } from 'src/domain/entity/onboarding-checkpoint.enum';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
 import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
@@ -33,17 +33,17 @@ export class ValidateMobileUsecase {
     if (!onboardingFound) {
       const primaryKeyCriteria = this.buildPrimaryKeyCriteria(
         onboardingId,
-        OnboardingStatus.EMAIL_CONFIRMED,
+        OnboardingCheckpoint.EMAIL_CONFIRMED,
       );
       const onboardingConfirmed =
         await this.onboardingRepository.findByPk(primaryKeyCriteria);
       if (!onboardingConfirmed) {
         this.logger.error(
           { onboardingId },
-          `Cannot proceed with mobile validation, the onboarding is not in ${OnboardingStatus.EMAIL_CONFIRMED} status.`,
+          `Cannot proceed with mobile validation, the onboarding is not in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
         );
         throw new OnboardingNotEmailConfirmedError(
-          `Cannot validate mobile: onboarding must be in ${OnboardingStatus.EMAIL_CONFIRMED} status.`,
+          `Cannot validate mobile: onboarding must be in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
         );
       } else {
         this.logger.info(
@@ -53,7 +53,9 @@ export class ValidateMobileUsecase {
         return [onboardingConfirmed, MobileStatus.AVAILABLE];
       }
     } else {
-      if (OnboardingStatus.EMAIL_CONFIRMED === onboardingFound.getStatus()) {
+      if (
+        OnboardingCheckpoint.EMAIL_CONFIRMED === onboardingFound.getCheckpoint()
+      ) {
         this.logger.info(
           { onboardingId },
           `Mobile validation completed successfully: The onboarding is in EMAIL_CONFIRMED state for ${mobile}`,
@@ -62,7 +64,7 @@ export class ValidateMobileUsecase {
       } else {
         this.logger.warn(
           { onboardingId },
-          `Cannot proceed: mobile ${mobile} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (status: ${onboardingFound.getStatus()}).`,
+          `Cannot proceed: mobile ${mobile} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (checkpoint: ${onboardingFound.getCheckpoint()}).`,
         );
         return [onboardingFound, MobileStatus.ALREADY_TAKEN];
       }
@@ -89,14 +91,14 @@ export class ValidateMobileUsecase {
 
   private buildPrimaryKeyCriteria(
     onboardingId: string,
-    status: OnboardingStatus,
+    checkpoint: OnboardingCheckpoint,
   ): PrimaryKeyCriteria {
     const query: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
-      filterExpression: 'status = :status',
+      filterExpression: 'checkpoint = :checkpoint',
       values: {
         ':onboardingId': onboardingId,
-        ':status': status,
+        ':checkpoint': checkpoint,
       },
     };
     return query;

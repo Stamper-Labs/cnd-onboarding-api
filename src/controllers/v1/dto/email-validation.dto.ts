@@ -6,8 +6,7 @@ export class EmailValidationDto {
   @ApiProperty()
   email: string;
 
-  constructor(onboardingId: string, email: string) {
-    this.onboardingId = onboardingId;
-    this.email = email;
+  static from(onboardingId: string, email: string): EmailValidationDto {
+    return { onboardingId, email } as EmailValidationDto;
   }
 }

@@ -1,5 +1,5 @@
 import { OnboardingRepository } from '../domain/repository/onboarding.repository';
-import { OnboardingStatus } from 'src/domain/entity/onboarding-status.enum';
+import { OnboardingCheckpoint } from 'src/domain/entity/onboarding-checkpoint.enum';
 import { Injectable } from '@nestjs/common';
 import { authenticator } from 'otplib';
 import { InjectPinoLogger } from 'nestjs-pino';
@@ -28,7 +28,7 @@ export class ConfirmOtpUsecase {
     const queryExpression = this.buildQueryExpression(
       onboardingId,
       email,
-      OnboardingStatus.INITIATED,
+      OnboardingCheckpoint.INITIATED,
     );
 
     const onboardingFound =
@@ -51,10 +51,10 @@ export class ConfirmOtpUsecase {
 
         const patchCriteria: PatchCriteria = {
           partitionKey: ['onboardingId', onboardingId],
-          patchExpression: 'SET status = :status',
+          patchExpression: 'SET checkpoint = :checkpoint',
           values: {
             ':onboardingId': onboardingId,
-            ':status': OnboardingStatus.EMAIL_CONFIRMED,
+            ':checkpoint': OnboardingCheckpoint.EMAIL_CONFIRMED,
           },
         };
         const onboardingUpd =
@@ -68,10 +68,10 @@ export class ConfirmOtpUsecase {
         if (isValidOtp) {
           const patchCriteria: PatchCriteria = {
             partitionKey: ['onboardingId', onboardingId],
-            patchExpression: 'SET status = :status',
+            patchExpression: 'SET checkpoint = :checkpoint',
             values: {
               ':onboardingId': onboardingId,
-              ':status': OnboardingStatus.EMAIL_CONFIRMED,
+              ':checkpoint': OnboardingCheckpoint.EMAIL_CONFIRMED,
             },
           };
           const onboardingUpd =
@@ -89,15 +89,15 @@ export class ConfirmOtpUsecase {
   private buildQueryExpression(
     onboardingId: string,
     email: string,
-    status: OnboardingStatus,
+    checkpoint: OnboardingCheckpoint,
   ): PrimaryKeyCriteria {
     const queryByPkCriteria: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
-      filterExpression: 'status = :status AND email = :email',
+      filterExpression: 'checkpoint = :checkpoint AND email = :email',
       values: {
         ':onboardingId': onboardingId,
         ':email': email,
-        ':status': status,
+        ':checkpoint': checkpoint,
       },
     };
     return queryByPkCriteria;

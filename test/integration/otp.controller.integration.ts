@@ -5,7 +5,7 @@ import { AppModule } from 'src/app.module';
 import { IntegrationTestModule } from './integration-test.module';
 import { StartedTestContainer } from 'testcontainers';
 
-describe('EmailController (integration test)', () => {
+describe('OtpController (integration test)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
@@ -23,17 +23,12 @@ describe('EmailController (integration test)', () => {
     await app.close();
   });
 
-  it('should return 201 when the email is valid', () => {
+  it('should return 412 when the email has not been validated', () => {
     return request(app.getHttpServer())
-      .post('/v1/email/validate')
-      .send({ email: 'test@mailinator.com' })
-      .expect(201);
-  });
-
-  it('should return 201 when the email is valid', () => {
-    return request(app.getHttpServer())
-      .post('/v1/email/validate')
-      .send({ email: 'test@mailinator.com' })
-      .expect(201);
+      .post('/v1/otp/send')
+      .query({ channel: 'email' }) // 👈 query param ?destinationType=email
+      .set('X-Onboarding-Id', 'abc-123')
+      .send({ value: 'test@mailinator.com' })
+      .expect(412);
   });
 });

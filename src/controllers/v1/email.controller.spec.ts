@@ -3,7 +3,7 @@ import { EmailController } from './email.controller';
 import { EmailValidationDto } from './dto/email-validation.dto';
 import { ValidateEmailUsecase } from '../../usecase/validate-email.usecase';
 import { EmailStatus } from '../../domain/entity/email-status.enum';
-import { OnboardingStatus } from '../../domain/entity/onboarding-status.enum';
+import { OnboardingCheckpoint } from '../../domain/entity/onboarding-checkpoint.enum';
 import { Onboarding } from '../../domain/entity/onboarding';
 import { getLoggerToken } from 'nestjs-pino';
 
@@ -41,7 +41,7 @@ describe('EmailController', () => {
       //given
       const onboardingCreatedMock = Onboarding.builder()
         .setOnboardingId('1234')
-        .setStatus(OnboardingStatus.INITIATED)
+        .setCheckpoint(OnboardingCheckpoint.INITIATED)
         .setEmail('gvalenncia@gmail.com')
         .build();
       const emailValidationDtoMock: EmailValidationDto = {

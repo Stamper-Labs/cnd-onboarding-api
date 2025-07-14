@@ -30,7 +30,14 @@ describe('EmailController (integration test)', () => {
       .expect(201);
   });
 
-  it('should return 201 when the email is valid', () => {
+  it('should return with 201 if the email is linked to an INITIATED onboarding', async () => {
+    // First request — should succeed
+    await request(app.getHttpServer())
+      .post('/v1/email/validate')
+      .send({ email: 'test@mailinator.com' })
+      .expect(201);
+
+    // Second request — assuming the email is now "used", should fail or behave differently
     return request(app.getHttpServer())
       .post('/v1/email/validate')
       .send({ email: 'test@mailinator.com' })

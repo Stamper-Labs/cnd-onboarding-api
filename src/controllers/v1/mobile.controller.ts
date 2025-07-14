@@ -43,7 +43,7 @@ export class MobileController {
     const validatedEmail = result[0].getEmail();
     const validatedMobile = result[0].getMobile();
     const validatedOnboardingId = result[0].getOnboardingId();
-    return new MobileValidationDto(
+    return MobileValidationDto.from(
       validatedOnboardingId,
       validatedEmail,
       validatedMobile!,

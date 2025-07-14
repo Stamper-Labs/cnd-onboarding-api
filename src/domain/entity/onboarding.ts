@@ -1,9 +1,9 @@
-import { OnboardingStatus } from './onboarding-status.enum';
+import { OnboardingCheckpoint } from './onboarding-checkpoint.enum';
 
 export class Onboarding {
   constructor(
     private readonly onboardingId: string,
-    private readonly status: OnboardingStatus,
+    private readonly checkpoint: OnboardingCheckpoint,
     private readonly email: string,
     private readonly mobile?: string,
   ) {}
@@ -12,8 +12,8 @@ export class Onboarding {
     return this.onboardingId;
   }
 
-  getStatus(): OnboardingStatus {
-    return this.status;
+  getCheckpoint(): OnboardingCheckpoint {
+    return this.checkpoint;
   }
 
   getEmail(): string {
@@ -31,7 +31,7 @@ export class Onboarding {
 
 class OnboardingBuilder {
   private onboardingId!: string;
-  private status: OnboardingStatus;
+  private checkpoint: OnboardingCheckpoint;
   private email: string;
   private mobile?: string;
 
@@ -40,8 +40,8 @@ class OnboardingBuilder {
     return this;
   }
 
-  setStatus(status: OnboardingStatus): this {
-    this.status = status;
+  setCheckpoint(checkpoint: OnboardingCheckpoint): this {
+    this.checkpoint = checkpoint;
     return this;
   }
 
@@ -59,15 +59,15 @@ class OnboardingBuilder {
     if (!this.onboardingId) {
       throw new Error('onboardingId is required to build an Onboarding object');
     }
-    if (!this.status) {
-      throw new Error('status is required to build an Onboarding object');
+    if (!this.checkpoint) {
+      throw new Error('checkpoint is required to build an Onboarding object');
     }
     if (!this.email) {
       throw new Error('email is required to build an Onboarding object');
     }
     return new Onboarding(
       this.onboardingId,
-      this.status,
+      this.checkpoint,
       this.email,
       this.mobile,
     );

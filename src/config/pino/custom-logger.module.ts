@@ -99,19 +99,4 @@ export class CustomLoggerModule {
       },
     };
   }
-
-  private static getBaseHttpLoggingConfig() {
-    return {
-      serializers: {
-        req: () => undefined,
-      },
-      customProps: (req: Request) => ({
-        http: {
-          method: req.method,
-          url: req.url,
-          id: req.id,
-        },
-      }),
-    };
-  }
 }
