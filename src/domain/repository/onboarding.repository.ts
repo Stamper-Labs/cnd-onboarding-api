@@ -14,17 +14,37 @@ import { IndexCriteria } from './criteria/index.criteria';
 import { PrimaryKeyCriteria } from './criteria/primary-key.criteria';
 import { PatchCriteria } from './criteria/patch.criteria';
 import { UpsertCriteria } from './criteria/upsert.criteria';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class OnboardingRepository {
-  private readonly TABLE_NAME: string = 'cnd-onboarding-api-tb';
+  private TABLE_NAME: string;
 
   constructor(
     @InjectPinoLogger(OnboardingRepository.name)
     private readonly logger: PinoLogger,
     @Inject('DYNAMO_CLIENT')
     private readonly dynamoClient: DynamoDBDocumentClient,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const dynamoTableName = configService.get<string>('DYNAMO_TABLE_NAME');
+    if (!dynamoTableName) {
+      this.logger.error(
+        {
+          envValue: dynamoTableName,
+          envKey: 'DYNAMO_TABLE_NAME',
+          context: 'OnboardingRepository',
+        },
+        'Missing required environment variable: DYNAMO_TABLE_NAME',
+      );
+
+      throw new InternalServerErrorException(
+        'Unexpected error while accessing onboarding table configuration. Please check service setup.',
+      );
+    } else {
+      this.TABLE_NAME = dynamoTableName;
+    }
+  }
 
   async findOnboardingByIndex(
     indexCriteria: IndexCriteria,

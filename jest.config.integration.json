@@ -9,5 +9,8 @@
   "roots": ["<rootDir>/test/integration"],
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/src/$1"
-  }
+  },
+  "testPathIgnorePatterns": [
+    "/test/integration/base.integration.ts"
+  ]
 }

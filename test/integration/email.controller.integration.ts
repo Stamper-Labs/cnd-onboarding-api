@@ -1,28 +1,19 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from '../../src/app.module';
-import { DataInitializerModule } from './data-initializer.module';
+import { BaseIntegrationTest } from './base.integration';
 
 describe('EmailController (integration test)', () => {
-  let app: INestApplication<App>;
+  const base = new BaseIntegrationTest();
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule, DataInitializerModule.forRoot()],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    await base.setup();
   });
 
   afterAll(async () => {
-    await app.close();
+    await base.teardown();
   });
 
   it('should return 201 when the email is valid', () => {
-    return request(app.getHttpServer())
+    return request(base.getHttpServer())
       .post('/v1/email/validate')
       .send({ email: 'test@mailinator.com' })
       .expect(201);
