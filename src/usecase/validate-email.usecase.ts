@@ -42,7 +42,7 @@ export class ValidateEmailUsecase {
             .then((onboardingCreated): [Onboarding, EmailStatus] => {
               this.logger.info(
                 { onboardingId },
-                `Onboarding successfully advanced to the first checkpoint '${OnboardingCheckpoint.INITIATED}' with email: ${email}.`,
+                `Onboarding successfully advanced to the first checkpoint '${onboardingCreated.getCheckpoint()}' with email: ${email}.`,
               );
               return [onboardingCreated, EmailStatus.AVAILABLE];
             });

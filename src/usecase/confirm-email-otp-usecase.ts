@@ -71,7 +71,7 @@ export class ConfirmEmailOtpUsecase {
             await this.onboardingRepository.patch(patchCriteria);
           this.logger.info(
             { onboardingId: onboardingUpd.getOnboardingId() },
-            `OTP is valid. Onboarding successfully advanced to the '${OnboardingCheckpoint.EMAIL_CONFIRMED}' checkpoint.`,
+            `OTP is valid. Onboarding successfully advanced to the next checkpoint: '${onboardingUpd.getCheckpoint()}'. `,
           );
           return onboardingUpd;
         } else {
@@ -104,11 +104,10 @@ export class ConfirmEmailOtpUsecase {
     const queryByPkCriteria: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
       filterExpression:
-        'checkpoint IN (:checkpoint_INITIATED, :checkpoint_EMAIL_OTP_SENT) AND email = :email',
+        'checkpoint = :checkpoint_EMAIL_OTP_SENT AND email = :email',
       values: {
         ':onboardingId': onboardingId,
         ':email': email,
-        ':checkpoint_INITIATED': 'INITIATED',
         ':checkpoint_EMAIL_OTP_SENT': 'EMAIL_OTP_SENT',
       },
     };

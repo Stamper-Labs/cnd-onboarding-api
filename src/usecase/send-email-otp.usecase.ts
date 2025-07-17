@@ -81,12 +81,12 @@ export class SendEmailOtpUsecase {
     const queryByPkCriteria: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
       filterExpression:
-        '(checkpoint = :checkpoint1 OR checkpoint = :checkpoint2) AND email = :email',
+        '(checkpoint = :checkpoint_INITIATED OR checkpoint = :checkpoint_EMAIL_OTP_SENT) AND email = :email',
       values: {
         ':onboardingId': onboardingId,
         ':email': email,
-        ':checkpoint1': OnboardingCheckpoint.INITIATED,
-        ':checkpoint2': OnboardingCheckpoint.EMAIL_OTP_SENT,
+        ':checkpoint_INITIATED': OnboardingCheckpoint.INITIATED,
+        ':checkpoint_EMAIL_OTP_SENT': OnboardingCheckpoint.EMAIL_OTP_SENT,
       },
     };
 

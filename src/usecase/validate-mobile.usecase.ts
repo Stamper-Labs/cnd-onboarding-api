@@ -9,6 +9,7 @@ import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
 import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
 import { OnboardingRuleViolationError } from 'src/domain/error/onboarding-rule-violation.error';
 import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
+import { PatchCriteria } from 'src/domain/repository/criteria/patch.criteria';
 
 @Injectable()
 export class ValidateMobileUsecase {
@@ -46,9 +47,18 @@ export class ValidateMobileUsecase {
             `Cannot validate mobile: onboarding must be in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
           );
         } else {
+          const patchCriteria: PatchCriteria = {
+            partitionKey: ['onboardingId', onboardingId],
+            patchExpression: 'SET checkpoint = :checkpoint',
+            values: {
+              ':checkpoint': OnboardingCheckpoint.MOBILE_VALIDATED,
+            },
+          };
+          const onboardingPatched =
+            await this.onboardingRepository.patch(patchCriteria);
           this.logger.info(
             { onboardingId },
-            `Mobile validation completed successfully: ${mobile} is available to use`,
+            `onboarding sucessfully advanced to the next checkpoint: ${onboardingPatched.getCheckpoint()}`,
           );
           return [onboardingConfirmed, MobileStatus.AVAILABLE];
         }
@@ -57,9 +67,18 @@ export class ValidateMobileUsecase {
           OnboardingCheckpoint.EMAIL_CONFIRMED ===
           onboardingFound.getCheckpoint()
         ) {
+          const patchCriteria: PatchCriteria = {
+            partitionKey: ['onboardingId', onboardingId],
+            patchExpression: 'SET checkpoint = :checkpoint',
+            values: {
+              ':checkpoint': OnboardingCheckpoint.MOBILE_VALIDATED,
+            },
+          };
+          const onboardingPatched =
+            await this.onboardingRepository.patch(patchCriteria);
           this.logger.info(
             { onboardingId },
-            `Mobile validation completed successfully: The onboarding is in EMAIL_CONFIRMED state for ${mobile}`,
+            `onboarding sucessfully advanced to the next checkpoint: ${onboardingPatched.getCheckpoint()}`,
           );
           return [onboardingFound, MobileStatus.AVAILABLE];
         } else {
@@ -100,10 +119,11 @@ export class ValidateMobileUsecase {
   private buildPrimaryKeyCriteria(onboardingId: string): PrimaryKeyCriteria {
     const query: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
-      filterExpression: 'checkpoint = :checkpoint',
+      filterExpression: '(checkpoint = :checkpoint_EMAIL_CONFIRMED OR checkpoint = :checkpoint_MOBILE_VALIDATED)',
       values: {
         ':onboardingId': onboardingId,
-        ':checkpoint': OnboardingCheckpoint.EMAIL_CONFIRMED,
+        ':checkpoint_EMAIL_CONFIRMED': OnboardingCheckpoint.EMAIL_CONFIRMED,
+        ':checkpoint_MOBILE_VALIDATED': OnboardingCheckpoint.MOBILE_VALIDATED,
       },
     };
     return query;
