@@ -46,7 +46,7 @@ export class OnboardingRepository {
     }
   }
 
-  async findOnboardingByIndex(
+  async findByIndex(
     indexCriteria: IndexCriteria,
   ): Promise<Onboarding | undefined> {
     this.logger.debug(`Find onboarding by index: ${indexCriteria.indexName}`);
@@ -190,7 +190,10 @@ export class OnboardingRepository {
         }
       })
       .catch((error) => {
-        this.logger.error('Unexpected error while creating onboarding.', error);
+        this.logger.error(
+          `Unexpected error while creating onboarding: ${error}`,
+          error,
+        );
         throw new InternalServerErrorException('Failed to create onboarding.');
       });
   }

@@ -17,7 +17,7 @@ describe('EmailController (integration test)', () => {
     await app.init();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     const container = app.get<StartedTestContainer>('DYNAMO_CONTAINER');
     await container.stop();
     await app.close();

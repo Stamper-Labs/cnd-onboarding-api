@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class OtpRecipientDto {
+export class SendOtpDto {
   @ApiProperty({
     description: 'The email or the mobile to send the OTP to',
     examples: {
@@ -14,5 +14,5 @@ export class OtpRecipientDto {
       },
     },
   })
-  value: string;
+  recipient: string;
 }

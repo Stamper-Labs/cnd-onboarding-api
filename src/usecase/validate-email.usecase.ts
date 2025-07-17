@@ -19,14 +19,17 @@ export class ValidateEmailUsecase {
     email: string,
     onboardingId: string,
   ): Promise<[Onboarding, EmailStatus]> {
-    this.logger.info({ onboardingId }, `Start email validation: ${email}`);
+    this.logger.info(
+      { onboardingId },
+      `Executing: ${ValidateEmailUsecase.name}`,
+    );
     return this.onboardingRepository
-      .findOnboardingByIndex(this.buildEmailIndexCriteria(onboardingId, email))
+      .findByIndex(this.buildEmailIndexCriteria(onboardingId, email))
       .then((onboardingFound) => {
         if (!onboardingFound) {
           this.logger.info(
             { onboardingId },
-            `Proceeding to create a new onboarding with email: ${email}`,
+            `No onboarding found for the provided email: ${email}, proceeding to create a new onboarding.`,
           );
           const upsertCriteria = this.buildUpsertOnboardingCriteria(
             onboardingId,
@@ -37,7 +40,7 @@ export class ValidateEmailUsecase {
             .then((onboardingCreated) => {
               this.logger.info(
                 { onboardingId },
-                `Email validation completed successfully: ${email} is available to use`,
+                `Onboarding sucessfully advanced to the first checkpoint '${OnboardingCheckpoint.INITIATED}' with email: ${email}.`,
               );
               return [onboardingCreated, EmailStatus.AVAILABLE];
             });
@@ -47,13 +50,15 @@ export class ValidateEmailUsecase {
           ) {
             this.logger.info(
               { onboardingId },
-              `Email validation completed successfully: The onboarding is already INITIATED for ${email}`,
+              `An onboarding already exists at the '${OnboardingCheckpoint.INITIATED}' checkpoint for email ${onboardingFound.getEmail()}. 
+              Proceeding with the existing record.`,
             );
             return [onboardingFound, EmailStatus.AVAILABLE];
           } else {
             this.logger.warn(
               { onboardingId },
-              `Cannot proceed: email ${email} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (checkpoint: ${onboardingFound.getCheckpoint()}).`,
+              `Email ${email} is already associated with onboarding ${onboardingFound.getOnboardingId()} 
+              at checkpoint '${onboardingFound.getCheckpoint()}'.`,
             );
             return [onboardingFound, EmailStatus.ALREADY_TAKEN];
           }
@@ -67,7 +72,7 @@ export class ValidateEmailUsecase {
   ): UpsertCriteria<Onboarding> {
     this.logger.info(
       { onboardingId },
-      'Building upsert criteria for new onboarding entity. ',
+      'Preparing criteria to persist a new onboarding. ',
     );
     const obToCreate = Onboarding.builder()
       .setOnboardingId(onboardingId)
@@ -86,7 +91,7 @@ export class ValidateEmailUsecase {
   ): IndexCriteria {
     this.logger.info(
       { onboardingId },
-      'Building query criteria for email-index lookup. ',
+      'Preparing criteria to look for onboarding by email-index.',
     );
     const queryByIndexCriteria: IndexCriteria = {
       indexExpression: 'email = :email',

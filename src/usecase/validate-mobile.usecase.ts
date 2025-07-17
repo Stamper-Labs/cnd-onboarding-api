@@ -7,7 +7,7 @@ import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
 import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
 import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
-import { OnboardingNotEmailConfirmedError } from 'src/domain/error/onboarding-not-email-confirmed.error';
+import { OnboardingRuleViolationError } from 'src/domain/error/onboarding-rule-violation.error';
 
 @Injectable()
 export class ValidateMobileUsecase {
@@ -21,28 +21,26 @@ export class ValidateMobileUsecase {
     onboardingId: string,
     mobile: string,
   ): Promise<[Onboarding, MobileStatus]> {
-    this.logger.info({ onboardingId }, `Start mobile validation: ${mobile}`);
+    this.logger.info(
+      { onboardingId },
+      `Executing: ${ValidateMobileUsecase.name}`,
+    );
     const mobileIndexCriteria = this.buildMobileIndexCriteira(
       onboardingId,
       mobile,
     );
     const onboardingFound =
-      await this.onboardingRepository.findOnboardingByIndex(
-        mobileIndexCriteria,
-      );
+      await this.onboardingRepository.findByIndex(mobileIndexCriteria);
     if (!onboardingFound) {
-      const primaryKeyCriteria = this.buildPrimaryKeyCriteria(
-        onboardingId,
-        OnboardingCheckpoint.EMAIL_CONFIRMED,
-      );
+      const primaryKeyCriteria = this.buildPrimaryKeyCriteria(onboardingId);
       const onboardingConfirmed =
         await this.onboardingRepository.findByPk(primaryKeyCriteria);
       if (!onboardingConfirmed) {
         this.logger.error(
           { onboardingId },
-          `Cannot proceed with mobile validation, the onboarding is not in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
+          `Cannot proceed with mobile validation, the onboarding is not a ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
         );
-        throw new OnboardingNotEmailConfirmedError(
+        throw new OnboardingRuleViolationError(
           `Cannot validate mobile: onboarding must be in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
         );
       } else {
@@ -89,16 +87,13 @@ export class ValidateMobileUsecase {
     return queryByIndexCriteria;
   }
 
-  private buildPrimaryKeyCriteria(
-    onboardingId: string,
-    checkpoint: OnboardingCheckpoint,
-  ): PrimaryKeyCriteria {
+  private buildPrimaryKeyCriteria(onboardingId: string): PrimaryKeyCriteria {
     const query: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
       filterExpression: 'checkpoint = :checkpoint',
       values: {
         ':onboardingId': onboardingId,
-        ':checkpoint': checkpoint,
+        ':checkpoint': OnboardingCheckpoint.EMAIL_CONFIRMED,
       },
     };
     return query;

@@ -6,49 +6,58 @@ import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
 import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
 import { PatchCriteria } from 'src/domain/repository/criteria/patch.criteria';
+import { Onboarding } from 'src/domain/entity/onboarding';
+import { OnboardingRuleViolationError } from 'src/domain/error/onboarding-rule-violation.error';
 
 @Injectable()
-export class ConfirmOtpUsecase {
+export class ConfirmEmailOtpUsecase {
+  private static FALLBACK_OTP = '000000';
+
   constructor(
-    @InjectPinoLogger(ConfirmOtpUsecase.name)
+    @InjectPinoLogger(ConfirmEmailOtpUsecase.name)
     private readonly logger: PinoLogger,
     private readonly onboardingRepository: OnboardingRepository,
   ) {}
 
   async exe(
     email: string,
-    otp: string,
     onboardingId: string,
-  ): Promise<boolean> {
+    otp: string,
+  ): Promise<Onboarding> {
     this.logger.info(
-      { onboardingId, email },
-      'Start to confirm the OTP for email',
+      { onboardingId },
+      `Executing: ${ConfirmEmailOtpUsecase.name}`,
     );
-
-    const queryExpression = this.buildQueryExpression(
+    const queryExpression = this.buildPrimaryKeyCriteriaForEmail(
       onboardingId,
       email,
-      OnboardingCheckpoint.INITIATED,
     );
-
     const onboardingFound =
       await this.onboardingRepository.findByPk(queryExpression);
     if (!onboardingFound) {
       this.logger.error(
-        { onboardingId, email },
-        'Cannot confirm OTP, the email was not found',
+        { onboardingId },
+        `Either no onboarding found for email ${email}, or it is not at the ${OnboardingCheckpoint.INITIATED} checkpoint`,
       );
-      throw new Error('Cannot confirm OTP, the email was not found');
+      throw new OnboardingRuleViolationError(
+        'Cannot confirm OTP, onboarding not found or not at required checkpoint.',
+      );
     } else {
-      this.logger.info({ onboardingId, email }, 'Onboarding found for email');
       let isValidOtp = false;
-      if (otp === '000000') {
+      if (ConfirmEmailOtpUsecase.FALLBACK_OTP === otp) {
         this.logger.warn(
-          { onboardingId, email },
-          'Using OTP fallback for email.',
+          { onboardingId },
+          `Using fallback OTP for email: ${email}`,
         );
         isValidOtp = true; // Fallback for testing purposes
-
+      } else {
+        this.logger.warn(
+          { onboardingId },
+          `Using real OTP for email: ${email}`,
+        );
+        isValidOtp = authenticator.check(otp, onboardingId);
+      }
+      if (isValidOtp) {
         const patchCriteria: PatchCriteria = {
           partitionKey: ['onboardingId', onboardingId],
           patchExpression: 'SET checkpoint = :checkpoint',
@@ -60,44 +69,37 @@ export class ConfirmOtpUsecase {
         const onboardingUpd =
           await this.onboardingRepository.patch(patchCriteria);
         this.logger.info(
-          { onboardingId: onboardingUpd.getOnboardingId(), email },
-          'Email sucessfully confirmed',
+          { onboardingId: onboardingUpd.getOnboardingId() },
+          `OTP is valid. Onboarding successfully advanced to the '${OnboardingCheckpoint.EMAIL_CONFIRMED}' checkpoint.`,
         );
+        return onboardingUpd;
       } else {
-        isValidOtp = authenticator.check(otp, onboardingId);
-        if (isValidOtp) {
-          const patchCriteria: PatchCriteria = {
-            partitionKey: ['onboardingId', onboardingId],
-            patchExpression: 'SET checkpoint = :checkpoint',
-            values: {
-              ':onboardingId': onboardingId,
-              ':checkpoint': OnboardingCheckpoint.EMAIL_CONFIRMED,
-            },
-          };
-          const onboardingUpd =
-            await this.onboardingRepository.patch(patchCriteria);
-          this.logger.info(
-            { onboardingId: onboardingUpd.getOnboardingId(), email },
-            'Email sucessfully confirmed.',
-          );
-        }
+        this.logger.error(
+          { onboardingId },
+          `The OTP is either expired or does not match the one previously sent to email: ${email}.`,
+        );
+        throw new OnboardingRuleViolationError(
+          'OTP confirmation failed: the provided code has expired or does not match.',
+        );
       }
-      return isValidOtp;
     }
   }
 
-  private buildQueryExpression(
+  private buildPrimaryKeyCriteriaForEmail(
     onboardingId: string,
     email: string,
-    checkpoint: OnboardingCheckpoint,
   ): PrimaryKeyCriteria {
+    this.logger.info(
+      { onboardingId },
+      'Preparing criteria to look for onbarding by email and checkpoint.',
+    );
     const queryByPkCriteria: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
       filterExpression: 'checkpoint = :checkpoint AND email = :email',
       values: {
         ':onboardingId': onboardingId,
         ':email': email,
-        ':checkpoint': checkpoint,
+        ':checkpoint': OnboardingCheckpoint.INITIATED,
       },
     };
     return queryByPkCriteria;

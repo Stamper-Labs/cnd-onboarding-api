@@ -19,23 +19,41 @@ export class EmailController {
 
   @Post('/validate')
   @ApiCreatedResponse({
-    description: 'The email has been validated.',
+    description: `Validates whether the provided email is available. 
+      If it is, creates a new onboarding in the database associated with that email,
+      and returns the onboardingId for future use.`,
     type: EmailValidationDto,
   })
   async validateEmail(
     @Body() validateEmailDto: ValidateEmailDto,
   ): Promise<EmailValidationDto> {
     const newObid = uuidv4();
+    this.logger.info(
+      { onboardingId: newObid, email: validateEmailDto.email },
+      'Email validation started.',
+    );
     return this.validateEmailUsecase
       .exe(validateEmailDto.email, newObid)
       .then((statusTuple) => {
-        const validatedEmail = statusTuple[0].getEmail();
-        const onboardingId = statusTuple[0].getOnboardingId();
-        const emailStatus = statusTuple[1];
+        const [onboarding, emailStatus] = statusTuple;
         if (EmailStatus.ALREADY_TAKEN === emailStatus) {
-          throw new ConflictException('email is already taken');
+          this.logger.error(
+            { onboardingId: newObid, email: validateEmailDto.email },
+            `Email ${validateEmailDto.email} is already in use by onboardingId: ${onboarding.getOnboardingId()}.`,
+          );
+          throw new ConflictException('Email is already taken.');
         } else {
-          return EmailValidationDto.from(onboardingId, validatedEmail);
+          this.logger.info(
+            {
+              onboardingId: onboarding.getOnboardingId(),
+              email: onboarding.getEmail(),
+            },
+            `Email validation completed. The email ${validateEmailDto.email} is available.`,
+          );
+          return EmailValidationDto.from(
+            onboarding.getOnboardingId(),
+            emailStatus,
+          );
         }
       });
   }

@@ -5,11 +5,12 @@ import { OtpController } from './controllers/v1/otp.controller';
 import { MobileController } from './controllers/v1/mobile.controller';
 import { ValidateEmailUsecase } from './usecase/validate-email.usecase';
 import { OnboardingRepository } from './domain/repository/onboarding.repository';
-import { SendOtpUsecase } from './usecase/send-otp.usecase';
-import { ConfirmOtpUsecase } from './usecase/confirm-otp-usecase';
+import { SendEmailOtpUsecase } from './usecase/send-email-otp.usecase';
+import { ConfirmEmailOtpUsecase } from './usecase/confirm-email-otp-usecase';
 import { ValidateMobileUsecase } from './usecase/validate-mobile.usecase';
 import { DynamoModule } from './config/dynamo/dynamo.module';
 import { CustomLoggerModule } from './config/pino/custom-logger.module';
+import { ErrorUtilsService } from './domain/service/error-utils.service';
 
 @Module({
   imports: [
@@ -24,9 +25,10 @@ import { CustomLoggerModule } from './config/pino/custom-logger.module';
   providers: [
     ValidateEmailUsecase,
     OnboardingRepository,
-    SendOtpUsecase,
-    ConfirmOtpUsecase,
+    SendEmailOtpUsecase,
+    ConfirmEmailOtpUsecase,
     ValidateMobileUsecase,
+    ErrorUtilsService,
   ],
 })
 export class AppModule {}
