@@ -52,7 +52,7 @@ export class EmailController {
           );
           return EmailValidationDto.from(
             onboarding.getOnboardingId(),
-            emailStatus,
+            onboarding.getEmail(),
           );
         }
       });
