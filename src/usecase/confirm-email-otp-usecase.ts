@@ -20,8 +20,8 @@ export class ConfirmEmailOtpUsecase {
   ) {}
 
   async exe(
-    email: string,
     onboardingId: string,
+    email: string,
     otp: string,
   ): Promise<Onboarding> {
     this.logger.info(
@@ -62,7 +62,6 @@ export class ConfirmEmailOtpUsecase {
           partitionKey: ['onboardingId', onboardingId],
           patchExpression: 'SET checkpoint = :checkpoint',
           values: {
-            ':onboardingId': onboardingId,
             ':checkpoint': OnboardingCheckpoint.EMAIL_CONFIRMED,
           },
         };
@@ -95,11 +94,13 @@ export class ConfirmEmailOtpUsecase {
     );
     const queryByPkCriteria: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
-      filterExpression: 'checkpoint = :checkpoint AND email = :email',
+      filterExpression:
+        'checkpoint IN (:checkpoint_INITIATED, :checkpoint_EMAIL_OTP_SENT) AND email = :email',
       values: {
         ':onboardingId': onboardingId,
         ':email': email,
-        ':checkpoint': OnboardingCheckpoint.INITIATED,
+        ':checkpoint_INITIATED': 'INITIATED',
+        ':checkpoint_EMAIL_OTP_SENT': 'EMAIL_OTP_SENT',
       },
     };
     return queryByPkCriteria;

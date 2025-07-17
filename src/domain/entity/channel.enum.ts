@@ -1,4 +1,4 @@
 export enum Channel {
-  EMAIL = 'email',
-  MOBILE = 'mobile',
+  EMAIL = 'EMAIL',
+  MOBILE = 'MOBILE',
 }

@@ -17,46 +17,51 @@ export class SendEmailOtpUsecase {
   ) {}
 
   async exe(email: string, onboardingId: string): Promise<string> {
-    this.logger.info(
-      { onboardingId },
-      `Executing: ${SendEmailOtpUsecase.name}`,
-    );
-    const queryExpressionForEmail = this.buildPrimaryKeyCriteriaForEmail(
-      onboardingId,
-      email,
-    );
-    const onboardingFound = await this.onboardingRepository.findByPk(
-      queryExpressionForEmail,
-    );
-    if (!onboardingFound) {
-      this.logger.error(
-        { onboardingId },
-        `No onboarding found for email ${email} at the '${OnboardingCheckpoint.INITIATED}' checkpoint.`,
-      );
-      throw new OnboardingRuleViolationError(
-        'Cannot send OTP, the email has not been validated.',
-      );
-    } else {
-      const otp = authenticator.generate(onboardingFound.getOnboardingId());
-      // TODO send OTP vial email
+    try {
       this.logger.info(
         { onboardingId },
-        `OTP generated and sent to email: ${email}`,
+        `Executing: ${SendEmailOtpUsecase.name}`,
       );
-      const patchCriteria: PatchCriteria = {
-        partitionKey: ['onboardingId', onboardingId],
-        patchExpression: 'SET checkpoint = :checkpoint',
-        values: {
-          ':onboardingId': onboardingId,
-          ':checkpoint': OnboardingCheckpoint.EMAIL_OTP_SENT,
-        },
-      };
-      this.onboardingRepository.patch(patchCriteria);
-      this.logger.info(
-        { onboardingId },
-        `onboarding sucessfully advanced to the next checkpoint: ${OnboardingCheckpoint.EMAIL_OTP_SENT}`,
+      const queryExpressionForEmail = this.buildPrimaryKeyCriteriaForEmail(
+        onboardingId,
+        email,
       );
-      return otp;
+      const onboardingFound = await this.onboardingRepository.findByPk(
+        queryExpressionForEmail,
+      );
+      if (!onboardingFound) {
+        this.logger.error(
+          { onboardingId },
+          `No onboarding found for email ${email} at the '${OnboardingCheckpoint.INITIATED}' checkpoint.`,
+        );
+        throw new OnboardingRuleViolationError(
+          'Cannot send OTP, the email has not been validated.',
+        );
+      } else {
+        const otp = authenticator.generate(onboardingFound.getOnboardingId());
+        // TODO send OTP vial email
+        this.logger.info(
+          { onboardingId },
+          `OTP generated and sent to email: ${email}`,
+        );
+        const patchCriteria: PatchCriteria = {
+          partitionKey: ['onboardingId', onboardingId],
+          patchExpression: 'SET checkpoint = :checkpoint',
+          values: {
+            ':checkpoint': OnboardingCheckpoint.EMAIL_OTP_SENT,
+          },
+        };
+        const onboardingPatched =
+          await this.onboardingRepository.patch(patchCriteria);
+        this.logger.info(
+          { onboardingId },
+          `onboarding sucessfully advanced to the next checkpoint: ${onboardingPatched.getCheckpoint()}`,
+        );
+        return otp;
+      }
+    } catch (error: unknown) {
+      this.logger.error('Impossible to send OTP to email');
+      throw error;
     }
   }
 

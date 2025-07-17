@@ -44,7 +44,7 @@ describe('OtpController (integration test)', () => {
       .post('/v1/otp/send')
       .query({ channel: 'EMAIL' })
       .set('X-Onboarding-Id', onboardingId)
-      .send({ value: 'test@mailinator.com' })
+      .send({ recipient: 'test@mailinator.com' })
       .expect(204);
   });
 
@@ -59,7 +59,7 @@ describe('OtpController (integration test)', () => {
       .post('/v1/otp/send')
       .query({ channel: 'EMAIL' })
       .set('X-Onboarding-Id', onboardingId)
-      .send({ value: 'test@mailinator.com' })
+      .send({ recipient: 'test@mailinator.com' })
       .expect(204);
   });
 });

@@ -110,9 +110,9 @@ export class OtpController {
       try {
         const onboardingWithEmailOtpConfirmed: Onboarding =
           await this.confirmEmailOtpUsecase.exe(
+            onboardingId,
             confirmOtpDto.recipient,
             confirmOtpDto.otp,
-            onboardingId,
           );
         this.logger.info(
           { onboardingId },

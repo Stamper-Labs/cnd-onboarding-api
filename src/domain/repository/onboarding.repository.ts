@@ -8,13 +8,18 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
+  QueryCommandInput,
   UpdateCommand,
+  UpdateCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import { IndexCriteria } from './criteria/index.criteria';
 import { PrimaryKeyCriteria } from './criteria/primary-key.criteria';
 import { PatchCriteria } from './criteria/patch.criteria';
 import { UpsertCriteria } from './criteria/upsert.criteria';
 import { ConfigService } from '@nestjs/config';
+import { ErrorUtilsService } from '../service/error-utils.service';
+import { ErrorObject } from '../entity/error-object';
+import { OnboardingRepositoryError } from '../error/onboarding-repository.error';
 
 @Injectable()
 export class OnboardingRepository {
@@ -38,7 +43,10 @@ export class OnboardingRepository {
         'Missing required environment variable: DYNAMO_TABLE_NAME',
       );
 
-      throw new InternalServerErrorException(
+      this.logger.error(
+        'Unexpected error while accessing onboarding table configuration. Please check service setup.',
+      );
+      throw new OnboardingRepositoryError(
         'Unexpected error while accessing onboarding table configuration. Please check service setup.',
       );
     } else {
@@ -69,24 +77,20 @@ export class OnboardingRepository {
             .build();
         } else {
           this.logger.debug(
-            `Onboarding not found by index: ${indexCriteria.indexName}`,
+            `Onboarding not found by index: ${indexCriteria.indexName}. `,
           );
           return undefined;
         }
       })
-      .catch((error: Error) => {
+      .catch((error: unknown) => {
+        const [, serializedErrorObject]: [Error, ErrorObject] =
+          ErrorUtilsService.normalizeError(error);
         this.logger.error(
-          {
-            err: {
-              type: error.name,
-              message: error.message,
-              stack: error.stack,
-            },
-          },
-          `Failed to find onboarding by index: ${error.message}`,
+          { err: serializedErrorObject },
+          `There was an error while executing the QueryCommand in database to find onboarding by index: ${serializedErrorObject.message}. `,
         );
-        throw new InternalServerErrorException(
-          'Unexpected error while finding onboarding by index. Try again later.',
+        throw new OnboardingRepositoryError(
+          'Failed to execute the QueryCommand to find onboarding by index. ',
         );
       });
   }
@@ -99,7 +103,7 @@ export class OnboardingRepository {
       .send(queryCmd)
       .then((data) => {
         if (data.Items && data.Items.length > 0) {
-          this.logger.debug('Onboarding found by query.');
+          this.logger.debug('Onboarding found by primaryKey.');
           return Onboarding.builder()
             .setOnboardingId(data.Items[0].onboardingId)
             .setCheckpoint(
@@ -110,23 +114,19 @@ export class OnboardingRepository {
             .setEmail(data.Items[0].email)
             .build();
         } else {
-          this.logger.debug('Onboarding not found by email:');
+          this.logger.debug('Onboarding not found by primaryKey. ');
           return undefined;
         }
       })
       .catch((error: Error) => {
+        const [, serializedErrorObject]: [Error, ErrorObject] =
+          ErrorUtilsService.normalizeError(error);
         this.logger.error(
-          {
-            err: {
-              type: error.name,
-              message: error.message,
-              stack: error.stack,
-            },
-          },
-          `Failed to find onboarding by primary key: ${error.message}`,
+          { err: serializedErrorObject },
+          `There was an error while executing the QueryCommand in database to find onboarding by primaryKey: ${serializedErrorObject.message}. `,
         );
-        throw new InternalServerErrorException(
-          'Unexpected error while finding onboarding by primary key. Try again later.',
+        throw new OnboardingRepositoryError(
+          'Failed to execute the QueryCommand to find onboarding by primaryKey. ',
         );
       });
   }
@@ -157,13 +157,15 @@ export class OnboardingRepository {
           .setEmail(onboardingEntity.getEmail())
           .build();
       })
-      .catch((error: Error) => {
+      .catch((error: unknown) => {
+        const [, serializedErrorObject]: [Error, ErrorObject] =
+          ErrorUtilsService.normalizeError(error);
         this.logger.error(
-          { onboardingId: onboardingEntity.getOnboardingId(), error },
-          `Failed to create or replace onboarding: ${error.message}`,
+          { err: serializedErrorObject },
+          `There was an error while executing the PutCommand in database to insert or replace onboarding: ${serializedErrorObject.message}. `,
         );
-        throw new InternalServerErrorException(
-          'Unexpected error while creating or replacing onboarding. Try again later.',
+        throw new OnboardingRepositoryError(
+          'Failed to execute the PutCommand to insert or replace onboarding. ',
         );
       });
   }
@@ -189,27 +191,35 @@ export class OnboardingRepository {
           );
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
+        const [, serializedErrorObject]: [Error, ErrorObject] =
+          ErrorUtilsService.normalizeError(error);
         this.logger.error(
-          `Unexpected error while creating onboarding: ${error}`,
-          error,
+          { err: serializedErrorObject },
+          `There was an error while executing the UpdateCommand in database to partially update onboarding: ${serializedErrorObject.message}. `,
         );
-        throw new InternalServerErrorException('Failed to create onboarding.');
+        throw new OnboardingRepositoryError(
+          'Failed to execute the UpdateCommand to partially update onboarding. ',
+        );
       });
   }
 
   private buildQueryByPrimaryKeyCmd(primaryKeyCriteria: PrimaryKeyCriteria) {
     const { primaryKeyExpression, filterExpression, values } =
       primaryKeyCriteria;
-    const queryCmd = new QueryCommand({
+    const input: QueryCommandInput = {
       TableName: this.TABLE_NAME,
       KeyConditionExpression: primaryKeyExpression,
       FilterExpression: filterExpression,
       ExpressionAttributeValues: {
         ...values,
       },
-    });
-    return queryCmd;
+    };
+    this.logger.debug(
+      { commandInput: input },
+      'ready to execute QueryCommand by primaryKey. ',
+    );
+    return new QueryCommand(input);
   }
 
   private buildQueryByIndexCmd(indexCriteria: IndexCriteria): QueryCommand {
@@ -217,7 +227,7 @@ export class OnboardingRepository {
       indexCriteria;
 
     if (filterExpression) {
-      const queryCmd = new QueryCommand({
+      const input: QueryCommandInput = {
         TableName: this.TABLE_NAME,
         KeyConditionExpression: indexExpression,
         IndexName: indexName,
@@ -225,26 +235,31 @@ export class OnboardingRepository {
         ExpressionAttributeValues: {
           ...values,
         },
-      });
-      return queryCmd;
+      };
+      this.logger.debug(
+        { commandInput: input },
+        'ready to execute QueryCommand by index with filters. ',
+      );
+      return new QueryCommand(input);
     } else {
-      const queryCmd = new QueryCommand({
+      const input: QueryCommandInput = {
         TableName: this.TABLE_NAME,
         KeyConditionExpression: indexExpression,
         IndexName: indexName,
         ExpressionAttributeValues: {
           ...values,
         },
-      });
+      };
+      this.logger.debug(
+        { commandInput: input },
+        'ready to execute QueryCommand by index with filters. ',
+      );
+      const queryCmd = new QueryCommand(input);
       return queryCmd;
     }
   }
 
   private buildPutOnboardingCmd(onboarding: Onboarding): PutCommand {
-    this.logger.debug(
-      { onboardingId: onboarding.getOnboardingId() },
-      'Building PutCommand to create or replace onboarding.',
-    );
     const putCmd = new PutCommand({
       TableName: this.TABLE_NAME,
       Item: {
@@ -267,7 +282,7 @@ export class OnboardingRepository {
       const key: Record<string, string | number | boolean> = {
         [partitionKey]: partitionKeyValue,
       };
-      const updateCmd = new UpdateCommand({
+      const input: UpdateCommandInput = {
         TableName: this.TABLE_NAME,
         Key: key,
         UpdateExpression: updateExpression,
@@ -275,7 +290,12 @@ export class OnboardingRepository {
           ...values,
         },
         ReturnValues: 'ALL_NEW',
-      });
+      };
+      this.logger.debug(
+        { commandInput: input },
+        'ready to execute UpdateCommand. ',
+      );
+      const updateCmd = new UpdateCommand(input);
       return updateCmd;
     } else {
       const [sortKey, sortKeyValue] = patchCriteria.sortKey;
@@ -283,7 +303,7 @@ export class OnboardingRepository {
         [partitionKey]: partitionKeyValue,
         [sortKey]: sortKeyValue,
       };
-      const updateCmd = new UpdateCommand({
+      const input: UpdateCommandInput = {
         TableName: this.TABLE_NAME,
         Key: key,
         UpdateExpression: updateExpression,
@@ -291,7 +311,12 @@ export class OnboardingRepository {
           ...values,
         },
         ReturnValues: 'ALL_NEW',
-      });
+      };
+      this.logger.debug(
+        { commandInput: input },
+        'ready to execute UpdateCommand. ',
+      );
+      const updateCmd = new UpdateCommand(input);
       return updateCmd;
     }
   }
