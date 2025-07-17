@@ -49,9 +49,10 @@ export class ValidateMobileUsecase {
         } else {
           const patchCriteria: PatchCriteria = {
             partitionKey: ['onboardingId', onboardingId],
-            patchExpression: 'SET checkpoint = :checkpoint',
+            patchExpression: 'SET checkpoint = :checkpoint, mobile = :mobile',
             values: {
               ':checkpoint': OnboardingCheckpoint.MOBILE_VALIDATED,
+              ':mobile': mobile,
             },
           };
           const onboardingPatched =
@@ -69,9 +70,10 @@ export class ValidateMobileUsecase {
         ) {
           const patchCriteria: PatchCriteria = {
             partitionKey: ['onboardingId', onboardingId],
-            patchExpression: 'SET checkpoint = :checkpoint',
+            patchExpression: 'SET checkpoint = :checkpoint, mobile = :mobile',
             values: {
               ':checkpoint': OnboardingCheckpoint.MOBILE_VALIDATED,
+              ':mobile': mobile,
             },
           };
           const onboardingPatched =

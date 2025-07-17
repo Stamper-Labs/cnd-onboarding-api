@@ -18,12 +18,13 @@ import { ApiNoContentResponse } from '@nestjs/swagger';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
 import { ChannelDto } from './dto/channel.dto';
-import { isEmail } from 'class-validator';
+import { isEmail, isNumberString } from 'class-validator';
 import { Channel } from 'src/domain/entity/channel.enum';
 import { OnboardingRuleViolationError } from 'src/domain/error/onboarding-rule-violation.error';
 import { Onboarding } from 'src/domain/entity/onboarding';
 import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
 import { ErrorObject } from 'src/domain/entity/error-object';
+import { SendMobileOtpUsecase } from 'src/usecase/send-mobile-otp.usecase';
 
 @Controller('/v1/otp')
 export class OtpController {
@@ -31,6 +32,7 @@ export class OtpController {
     @InjectPinoLogger(OtpController.name)
     private readonly logger: PinoLogger,
     private readonly sendEmailOtplUsecase: SendEmailOtpUsecase,
+    private readonly sendMobileOtplUsecase: SendMobileOtpUsecase,
     private readonly confirmEmailOtpUsecase: ConfirmEmailOtpUsecase,
   ) {}
 
@@ -79,14 +81,37 @@ export class OtpController {
           );
         }
       }
-    } else {
-      this.logger.error(
-        { onboardingId },
-        `Sending OTP not supported for channel: ${channelDto.channel}`,
-      );
-      throw new NotImplementedException(
-        'Sending OTP is not yet supported for channels other than email.',
-      );
+    } else if (Channel.MOBILE === channelDto.channel) {
+      try {
+        await this.sendMobileOtplUsecase.exe(
+          sendOtpDto.recipient,
+          onboardingId,
+        );
+        this.logger.info(
+          { onboardingId },
+          `Sending OTP to ${sendOtpDto.recipient} completed.`,
+        );
+      } catch (error: unknown) {
+        const [safeError, serializedErrorObject]: [Error, ErrorObject] =
+          ErrorUtilsService.normalizeError(error);
+        if (safeError instanceof OnboardingRuleViolationError) {
+          this.logger.error(
+            { onboardingId, err: serializedErrorObject },
+            `Sending OTP to ${sendOtpDto.recipient} failed due to an onboarding rule violation: ${serializedErrorObject.message}`,
+          );
+          throw new PreconditionFailedException(
+            `Sending OTP to ${sendOtpDto.recipient} failed due to an onboarding rule violation: ${serializedErrorObject.message}`,
+          );
+        } else {
+          this.logger.error(
+            { onboardingId, err: serializedErrorObject },
+            `Unexpected error while sending OTP to: ${sendOtpDto.recipient}: ${serializedErrorObject.message}`,
+          );
+          throw new InternalServerErrorException(
+            'Unexpected error while sending OTP to receipent.',
+          );
+        }
+      }
     }
   }
 
@@ -174,7 +199,7 @@ export class OtpController {
       }
     }
     if (Channel.MOBILE === channelDto.channel) {
-      if (!isEmail(sendOtpDto.recipient)) {
+      if (!isNumberString(sendOtpDto.recipient)) {
         this.logger.error(
           { onboardingId },
           'Invalid mobile format provided for otp receiver value field',
