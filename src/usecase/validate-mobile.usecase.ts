@@ -8,6 +8,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
 import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
 import { OnboardingRuleViolationError } from 'src/domain/error/onboarding-rule-violation.error';
+import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
 
 @Injectable()
 export class ValidateMobileUsecase {
@@ -21,51 +22,60 @@ export class ValidateMobileUsecase {
     onboardingId: string,
     mobile: string,
   ): Promise<[Onboarding, MobileStatus]> {
-    this.logger.info(
-      { onboardingId },
-      `Executing: ${ValidateMobileUsecase.name}`,
-    );
-    const mobileIndexCriteria = this.buildMobileIndexCriteira(
-      onboardingId,
-      mobile,
-    );
-    const onboardingFound =
-      await this.onboardingRepository.findByIndex(mobileIndexCriteria);
-    if (!onboardingFound) {
-      const primaryKeyCriteria = this.buildPrimaryKeyCriteria(onboardingId);
-      const onboardingConfirmed =
-        await this.onboardingRepository.findByPk(primaryKeyCriteria);
-      if (!onboardingConfirmed) {
-        this.logger.error(
-          { onboardingId },
-          `Cannot proceed with mobile validation, the onboarding is not a ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
-        );
-        throw new OnboardingRuleViolationError(
-          `Cannot validate mobile: onboarding must be in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
-        );
+    try {
+      this.logger.info(
+        { onboardingId },
+        `Executing: ${ValidateMobileUsecase.name}`,
+      );
+      const mobileIndexCriteria = this.buildMobileIndexCriteira(
+        onboardingId,
+        mobile,
+      );
+      const onboardingFound =
+        await this.onboardingRepository.findByIndex(mobileIndexCriteria);
+      if (!onboardingFound) {
+        const primaryKeyCriteria = this.buildPrimaryKeyCriteria(onboardingId);
+        const onboardingConfirmed =
+          await this.onboardingRepository.findByPk(primaryKeyCriteria);
+        if (!onboardingConfirmed) {
+          this.logger.error(
+            { onboardingId },
+            `Cannot proceed with mobile validation, the onboarding is not a ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
+          );
+          throw new OnboardingRuleViolationError(
+            `Cannot validate mobile: onboarding must be in ${OnboardingCheckpoint.EMAIL_CONFIRMED} checkpoint.`,
+          );
+        } else {
+          this.logger.info(
+            { onboardingId },
+            `Mobile validation completed successfully: ${mobile} is available to use`,
+          );
+          return [onboardingConfirmed, MobileStatus.AVAILABLE];
+        }
       } else {
-        this.logger.info(
-          { onboardingId },
-          `Mobile validation completed successfully: ${mobile} is available to use`,
-        );
-        return [onboardingConfirmed, MobileStatus.AVAILABLE];
+        if (
+          OnboardingCheckpoint.EMAIL_CONFIRMED ===
+          onboardingFound.getCheckpoint()
+        ) {
+          this.logger.info(
+            { onboardingId },
+            `Mobile validation completed successfully: The onboarding is in EMAIL_CONFIRMED state for ${mobile}`,
+          );
+          return [onboardingFound, MobileStatus.AVAILABLE];
+        } else {
+          this.logger.warn(
+            { onboardingId },
+            `Cannot proceed: mobile ${mobile} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (checkpoint: ${onboardingFound.getCheckpoint()}).`,
+          );
+          return [onboardingFound, MobileStatus.ALREADY_TAKEN];
+        }
       }
-    } else {
-      if (
-        OnboardingCheckpoint.EMAIL_CONFIRMED === onboardingFound.getCheckpoint()
-      ) {
-        this.logger.info(
-          { onboardingId },
-          `Mobile validation completed successfully: The onboarding is in EMAIL_CONFIRMED state for ${mobile}`,
-        );
-        return [onboardingFound, MobileStatus.AVAILABLE];
-      } else {
-        this.logger.warn(
-          { onboardingId },
-          `Cannot proceed: mobile ${mobile} is already associated with onboarding: ${onboardingFound.getOnboardingId()} (checkpoint: ${onboardingFound.getCheckpoint()}).`,
-        );
-        return [onboardingFound, MobileStatus.ALREADY_TAKEN];
-      }
+    } catch (error: unknown) {
+      const [, serializedErrorObject] = ErrorUtilsService.normalizeError(error);
+      this.logger.error(
+        `Failed to execute ${ValidateMobileUsecase.name}: ${serializedErrorObject.message}`,
+      );
+      throw error;
     }
   }
 

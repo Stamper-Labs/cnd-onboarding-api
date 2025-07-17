@@ -6,6 +6,7 @@ import { Onboarding } from '../domain/entity/onboarding';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { IndexCriteria } from 'src/domain/repository/criteria/index.criteria';
 import { UpsertCriteria } from 'src/domain/repository/criteria/upsert.criteria';
+import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
 
 @Injectable()
 export class ValidateEmailUsecase {
@@ -23,9 +24,10 @@ export class ValidateEmailUsecase {
       { onboardingId },
       `Executing: ${ValidateEmailUsecase.name}`,
     );
+
     return this.onboardingRepository
       .findByIndex(this.buildEmailIndexCriteria(onboardingId, email))
-      .then((onboardingFound) => {
+      .then((onboardingFound): Promise<[Onboarding, EmailStatus]> => {
         if (!onboardingFound) {
           this.logger.info(
             { onboardingId },
@@ -37,32 +39,38 @@ export class ValidateEmailUsecase {
           );
           return this.onboardingRepository
             .upsert(upsertCriteria)
-            .then((onboardingCreated) => {
+            .then((onboardingCreated): [Onboarding, EmailStatus] => {
               this.logger.info(
                 { onboardingId },
-                `Onboarding sucessfully advanced to the first checkpoint '${OnboardingCheckpoint.INITIATED}' with email: ${email}.`,
+                `Onboarding successfully advanced to the first checkpoint '${OnboardingCheckpoint.INITIATED}' with email: ${email}.`,
               );
               return [onboardingCreated, EmailStatus.AVAILABLE];
             });
-        } else {
-          if (
-            OnboardingCheckpoint.INITIATED === onboardingFound.getCheckpoint()
-          ) {
-            this.logger.info(
-              { onboardingId },
-              `An onboarding already exists at the '${OnboardingCheckpoint.INITIATED}' checkpoint for email ${onboardingFound.getEmail()}. 
-              Proceeding with the existing record.`,
-            );
-            return [onboardingFound, EmailStatus.AVAILABLE];
-          } else {
-            this.logger.warn(
-              { onboardingId },
-              `Email ${email} is already associated with onboarding ${onboardingFound.getOnboardingId()} 
-              at checkpoint '${onboardingFound.getCheckpoint()}'.`,
-            );
-            return [onboardingFound, EmailStatus.ALREADY_TAKEN];
-          }
         }
+        if (
+          onboardingFound.getCheckpoint() === OnboardingCheckpoint.INITIATED
+        ) {
+          this.logger.info(
+            { onboardingId },
+            `An onboarding already exists at the '${OnboardingCheckpoint.INITIATED}' checkpoint for email ${onboardingFound.getEmail()}. Proceeding with the existing record.`,
+          );
+          return Promise.resolve([onboardingFound, EmailStatus.AVAILABLE]);
+        } else {
+          this.logger.warn(
+            { onboardingId },
+            `Email ${email} is already associated with onboarding ${onboardingFound.getOnboardingId()} at checkpoint '${onboardingFound.getCheckpoint()}'.`,
+          );
+          return Promise.resolve([onboardingFound, EmailStatus.ALREADY_TAKEN]);
+        }
+      })
+      .catch((error: unknown) => {
+        const [, serializedErrorObject] =
+          ErrorUtilsService.normalizeError(error);
+        this.logger.error(
+          { onboardingId, err: serializedErrorObject },
+          `Failed to execute ${ValidateEmailUsecase.name}: ${serializedErrorObject.message}`,
+        );
+        throw error;
       });
   }
 

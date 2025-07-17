@@ -1,4 +1,10 @@
-import { Body, ConflictException, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  InternalServerErrorException,
+  Post,
+} from '@nestjs/common';
 
 import { ValidateEmailUsecase } from '../../usecase/validate-email.usecase';
 import { EmailValidationDto } from './dto/email-validation.dto';
@@ -8,6 +14,7 @@ import { ApiCreatedResponse } from '@nestjs/swagger';
 import { InjectPinoLogger } from 'nestjs-pino';
 import { PinoLogger } from 'nestjs-pino';
 import { ValidateEmailDto } from './dto/validate-email.dto';
+import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
 
 @Controller('/v1/email')
 export class EmailController {
@@ -55,6 +62,21 @@ export class EmailController {
             onboarding.getEmail(),
           );
         }
+      })
+      .catch((error: unknown) => {
+        const [, serializedErrorObject] =
+          ErrorUtilsService.normalizeError(error);
+        this.logger.error(
+          {
+            onboardingId: newObid,
+            email: validateEmailDto.email,
+            err: serializedErrorObject,
+          },
+          `Unexpected error while validating email: ${validateEmailDto.email}. ${serializedErrorObject.message}. `,
+        );
+        throw new InternalServerErrorException(
+          'Unexpected error while validating email.',
+        );
       });
   }
 }

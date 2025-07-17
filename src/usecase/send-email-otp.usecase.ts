@@ -7,6 +7,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { PrimaryKeyCriteria } from 'src/domain/repository/criteria/primary-key.criteria';
 import { PatchCriteria } from 'src/domain/repository/criteria/patch.criteria';
 import { OnboardingRuleViolationError } from 'src/domain/error/onboarding-rule-violation.error';
+import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
 
 @Injectable()
 export class SendEmailOtpUsecase {
@@ -60,7 +61,10 @@ export class SendEmailOtpUsecase {
         return otp;
       }
     } catch (error: unknown) {
-      this.logger.error('Impossible to send OTP to email');
+      const [, serializedErrorObject] = ErrorUtilsService.normalizeError(error);
+      this.logger.error(
+        `Failed to execute ${SendEmailOtpUsecase.name}: ${serializedErrorObject.message}`,
+      );
       throw error;
     }
   }
