@@ -119,7 +119,8 @@ export class ValidateMobileUsecase {
   private buildPrimaryKeyCriteria(onboardingId: string): PrimaryKeyCriteria {
     const query: PrimaryKeyCriteria = {
       primaryKeyExpression: 'onboardingId = :onboardingId',
-      filterExpression: '(checkpoint = :checkpoint_EMAIL_CONFIRMED OR checkpoint = :checkpoint_MOBILE_VALIDATED)',
+      filterExpression:
+        '(checkpoint = :checkpoint_EMAIL_CONFIRMED OR checkpoint = :checkpoint_MOBILE_VALIDATED)',
       values: {
         ':onboardingId': onboardingId,
         ':checkpoint_EMAIL_CONFIRMED': OnboardingCheckpoint.EMAIL_CONFIRMED,
