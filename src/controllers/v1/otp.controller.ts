@@ -261,13 +261,13 @@ export class OtpController {
       }
     }
     if (Channel.MOBILE === channelDto.channel) {
-      if (!isEmail(confirmOtpDto.recipient)) {
+      if (!isNumberString(confirmOtpDto.recipient)) {
         this.logger.error(
           { onboardingId },
           'Invalid mobile format provided for otp recepient value field',
         );
         throw new BadRequestException(
-          'The provided otp recepient is not a valid mobile address.',
+          'The provided otp recepient is not a valid mobile number.',
         );
       }
     }
