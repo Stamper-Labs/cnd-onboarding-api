@@ -12,6 +12,7 @@ import { DynamoModule } from './config/dynamo/dynamo.module';
 import { CustomLoggerModule } from './config/pino/custom-logger.module';
 import { ErrorUtilsService } from './domain/service/error-utils.service';
 import { SendMobileOtpUsecase } from './usecase/send-mobile-otp.usecase';
+import { ConfirmMobileOtpUsecase } from './usecase/confirm-mobile-otp-usecase';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SendMobileOtpUsecase } from './usecase/send-mobile-otp.usecase';
     ConfirmEmailOtpUsecase,
     ValidateMobileUsecase,
     SendMobileOtpUsecase,
+    ConfirmMobileOtpUsecase,
     ErrorUtilsService,
   ],
 })

@@ -7,7 +7,6 @@ import {
   PreconditionFailedException,
   Query,
   HttpCode,
-  NotImplementedException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { SendEmailOtpUsecase } from '../../usecase/send-email-otp.usecase';
@@ -25,6 +24,7 @@ import { Onboarding } from 'src/domain/entity/onboarding';
 import { ErrorUtilsService } from 'src/domain/service/error-utils.service';
 import { ErrorObject } from 'src/domain/entity/error-object';
 import { SendMobileOtpUsecase } from 'src/usecase/send-mobile-otp.usecase';
+import { ConfirmMobileOtpUsecase } from 'src/usecase/confirm-mobile-otp-usecase';
 
 @Controller('/v1/otp')
 export class OtpController {
@@ -34,6 +34,7 @@ export class OtpController {
     private readonly sendEmailOtplUsecase: SendEmailOtpUsecase,
     private readonly sendMobileOtplUsecase: SendMobileOtpUsecase,
     private readonly confirmEmailOtpUsecase: ConfirmEmailOtpUsecase,
+    private readonly confirmMobileOtpUsecase: ConfirmMobileOtpUsecase,
   ) {}
 
   @Post('/send')
@@ -164,14 +165,39 @@ export class OtpController {
           );
         }
       }
-    } else {
-      this.logger.error(
-        { onboardingId },
-        `OTP confirmation not supported for channel: ${channelDto.channel}`,
-      );
-      throw new NotImplementedException(
-        'OTP confirmation is not yet supported for channels other than email.',
-      );
+    } else if (Channel.MOBILE === channelDto.channel) {
+      try {
+        const onboardingWithMobileOtpConfirmed: Onboarding =
+          await this.confirmMobileOtpUsecase.exe(
+            onboardingId,
+            confirmOtpDto.recipient,
+            confirmOtpDto.otp,
+          );
+        this.logger.info(
+          { onboardingId },
+          `OTP sucessfully confirmed for email: ${onboardingWithMobileOtpConfirmed.getMobile()}`,
+        );
+      } catch (error: unknown) {
+        const [safeError, serializedErrorObject]: [Error, ErrorObject] =
+          ErrorUtilsService.normalizeError(error);
+        if (safeError instanceof OnboardingRuleViolationError) {
+          this.logger.error(
+            { onboardingId, err: serializedErrorObject },
+            `Failed to confirm OTP sent to ${confirmOtpDto.recipient} due to an onboarding rule violation: ${serializedErrorObject.message}`,
+          );
+          throw new PreconditionFailedException(
+            `Failed to confirm OTP sent to ${confirmOtpDto.recipient} due to an onboarding rule violation: ${serializedErrorObject.message}`,
+          );
+        } else {
+          this.logger.error(
+            { onboardingId, err: serializedErrorObject },
+            `Unexpected error during OTP confirmation: ${confirmOtpDto.recipient}: ${serializedErrorObject.message}`,
+          );
+          throw new InternalServerErrorException(
+            'Unexpected error during OTP confirmation.',
+          );
+        }
+      }
     }
   }
 
