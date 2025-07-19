@@ -15,6 +15,8 @@ import { Request } from 'express';
           return CustomLoggerModule.getProductionLoggingConfig(logLevel);
         } else if ('integration' === environment) {
           return CustomLoggerModule.getIntegrationLoggingConfig(logLevel);
+        } else if ('staging' === environment) {
+          return CustomLoggerModule.getStagingLoggingConfig(logLevel)
         } else {
           return CustomLoggerModule.getLocalLoggingConfig(logLevel);
         }
@@ -88,6 +90,28 @@ export class CustomLoggerModule {
               target: 'pino-roll',
               options: {
                 file: './logs/production.log',
+                size: '10m',
+                mkdir: true,
+                limit: { count: 30 },
+              },
+              level: logLevel,
+            },
+          ],
+        },
+      },
+    };
+  }
+
+    private static getStagingLoggingConfig(logLevel: string) {
+    return {
+      pinoHttp: {
+        level: logLevel,
+        transport: {
+          targets: [
+            {
+              target: 'pino-roll',
+              options: {
+                file: './logs/staging.log',
                 size: '10m',
                 mkdir: true,
                 limit: { count: 30 },
