@@ -16,7 +16,7 @@ import { Request } from 'express';
         } else if ('integration' === environment) {
           return CustomLoggerModule.getIntegrationLoggingConfig(logLevel);
         } else if ('staging' === environment) {
-          return CustomLoggerModule.getStagingLoggingConfig(logLevel)
+          return CustomLoggerModule.getStagingLoggingConfig(logLevel);
         } else {
           return CustomLoggerModule.getLocalLoggingConfig(logLevel);
         }
@@ -102,7 +102,7 @@ export class CustomLoggerModule {
     };
   }
 
-    private static getStagingLoggingConfig(logLevel: string) {
+  private static getStagingLoggingConfig(logLevel: string) {
     return {
       pinoHttp: {
         level: logLevel,
