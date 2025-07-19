@@ -12,18 +12,18 @@ permissions:
 jobs:
   build:
     name: Build
-    uses: Stamper-Labs/core-flows/.github/workflows/yarn-nestjs-build.yml@v1.8.4
+    uses: Stamper-Labs/core-flows/.github/workflows/yarn-nestjs-build.yml@dev
     secrets: inherit
 
   dockerize:
     needs: build
     name: Dockerize
-    uses: Stamper-Labs/core-flows/.github/workflows/yarn-nestjs-release-aws.yml@v1.8.4
+    uses: Stamper-Labs/core-flows/.github/workflows/yarn-nestjs-release-aws.yml@dev
 
   deploy-to-staging:
     needs: dockerize
     name: Deploy to Staging
-    uses: Stamper-Labs/core-flows/.github/workflows/yarn-nestjs-deploy-aws.yml@v1.8.4
+    uses: Stamper-Labs/core-flows/.github/workflows/yarn-nestjs-deploy-aws.yml@dev
     with:
       subnet_access_level: private
     secrets: inherit
