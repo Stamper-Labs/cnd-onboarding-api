@@ -34,7 +34,7 @@ module "cnd_onboarding_api_ecs_tdef_staging" {
   td_cpu                   = "256"
   td_memory                = "512"
   td_container_definitions = templatefile( 
-    "./container/cnd-onboarding-api.json.tpl",
+    "./container/cnd-onboarding-api-staging.json.tpl",
     { image_tag = var.image_tag }
     )
   td_execution_role_arn = module.cnd_onboarding_api_role_tdef_staging.arn

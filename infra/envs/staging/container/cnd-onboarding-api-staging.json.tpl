@@ -5,6 +5,7 @@
     "essential": true,
     "cpu": 128,
     "memory": 256,
+    "command": ["yarn", "start:staging"],
     "portMappings": [
       {
         "containerPort": 3000,
