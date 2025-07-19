@@ -40,3 +40,25 @@ module "cnd_onboarding_api_ecs_tdef_staging" {
   td_execution_role_arn = module.cnd_onboarding_api_role_tdef_staging.arn
   env_tag                  = "staging"
 }
+
+module "cnd_onboarding_api_tb_staging" {
+  source              = "../../module/dynamo"
+  table_name          = "cnd-onboarding-api-tb-staging"
+  partition_key       = "onboardingId"
+  partition_key_type  = "S"
+
+  global_secondary_indexes = [
+    {
+      name            = "email-index"
+      type            = "S"
+      hash_key        = "email"
+      projection_type = "ALL"
+    },
+    {
+      name            = "mobile-index"
+      type            = "S"
+      hash_key        = "mobile"
+      projection_type = "ALL"
+    }
+  ]
+}
