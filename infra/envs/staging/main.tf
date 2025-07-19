@@ -7,21 +7,21 @@ data "terraform_remote_state" "core_infra" {
   }
 }
 
-module "cnd_policy_dynamo_full_access_staging" {
+module "cnd_onboarding_api_policy_provision_staging" {
   source             = "../../module/iam_policy"
-  policy_name        = "CndDynamoFullAccessPolicyStaging"
-  policy_description = "Grants Connduct ECS tasks full access to DynamoDB tables in staging environment"
-  policy             = file("./policy/dynamo-full-access.json")
+  policy_name        = "CndOnboardingApiProvisionPolicyStaging"
+  policy_description = "Grants ECS tasks of the Connduct Onboarding API in the staging environment access to required AWS services for task provisioning and execution."
+  policy             = file("./policy/cnd-onboarding-api-tdef-provision-policy.json")
 }
 
-module "cnd_role_tdef_staging" {
+module "cnd_onboarding_api_role_tdef_staging" {
   source             = "../../module/iam_role"
   role_name          = "CndServiceRoleForTaskDefinitionStaging"
-  assume_role_policy = file("./policy/ecs-task-assume-policy.json")
+  assume_role_policy = file("./policy/cnd-onboarding-api-tdef-assume-policy.json")
   policy_arns = {
     ecs_task_execution = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
     secrets_read_write = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
-    dynamo_full_access = module.cnd_policy_dynamo_full_access_staging.arn
+    cnd_onboarding_api_provision = module.cnd_onboarding_api_policy_provision_staging.arn
   }
   env_tag = "staging"
 }
@@ -37,6 +37,6 @@ module "cnd_onboarding_api_ecs_tdef_staging" {
     "./container/cnd-onboarding-api.json.tpl",
     { image_tag = var.image_tag }
     )
-  td_execution_role_arn = module.cnd_role_tdef_staging.arn
+  td_execution_role_arn = module.cnd_onboarding_api_role_tdef_staging.arn
   env_tag                  = "staging"
 }
