@@ -3,7 +3,7 @@ name: On Pull Request To Dev
 on:
   pull_request:
     branches:
-      - dev
+      - '*'
     types:
       - opened
       - synchronize
