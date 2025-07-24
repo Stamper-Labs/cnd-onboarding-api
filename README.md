@@ -28,7 +28,7 @@
 ## Project setup
 
 ```bash
-$ yarn instal
+$ yarn installllll
 ```
 
 ## Compile and run the project
